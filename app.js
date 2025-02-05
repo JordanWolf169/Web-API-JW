@@ -1,5 +1,12 @@
 const express = require("express");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
 const path = require("path");
+const session = require("express-session");
+const bcrypt = require("bcryptjs");
+const User = require("./models/User");
+const Person = require("./models/Person");
+const { register } = require("module");
 
 const app = express();
 const port = 3000;
