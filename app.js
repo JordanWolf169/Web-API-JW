@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const path = require("path");
 const session = require("express-session");
-//const bcrypt = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const User = require("./models/User");
 const { register } = require("module");
 
@@ -17,6 +17,19 @@ let message = "Wouldn't you like to be a pepper too?";
 
 app.use(bodyParser.json());
 app.use(express.urlencoded({extended:true}));
+
+//sets up the session variable
+app.use(session({
+    secret:"12345",
+    resave:false,
+    saveUninitialized:false,
+    cookie:{secure:false}// Set to true is using https
+}));
+
+function isAuthenticated(req,res, next){
+    if(req.session.user)return next();
+    return res.redirect("/login.html");
+}
 
 function sendMessage()
 {
@@ -51,7 +64,9 @@ db.once("open", ()=>{
     console.log("Connected to MongoDB Database");
 });*/
 
-
+app.get("/auth-status", (req, res) => {
+    res.json({ isAuthenticated: !!req.session.user });
+});
   
 //App Routes
 
@@ -106,7 +121,7 @@ app.get("/games", async (req, res)=>{
 
 
 //Create routes
-app.post("/addgame", async (req, res)=>{
+app.post("/addgame", isAuthenticated, async (req, res)=>{
     try{
         const newGame = new Game(req.body);
         const saveGame = await newGame.save();
@@ -126,20 +141,20 @@ app.post("/login", async (req,res)=>{
 
     if(user && bcrypt.compareSync(password, user.password)){
         req.session.user = username;
-        return res.redirect("/users");
+        return res.redirect("/index.html");
     }
     req.session.error = "Invalid User";
-    return res.redirect("/login")
+    return res.redirect("/login.html")
 });
 
 app.get("/logout", (req,res)=>{
     req.session.destroy(()=>{
-        res.redirect("/login");
+        res.redirect("/login.html");
     })
 });
 
 //Update Route
-app.put("/updategame/:id", (req,res)=>{
+app.put("/updategame/:id", isAuthenticated, (req,res)=>{
     //Example of a promise statement for async fucntion
     Game.findByIdAndUpdate(req.params.id, req.body, {
         new:true,
@@ -155,7 +170,7 @@ app.put("/updategame/:id", (req,res)=>{
 });
 
 //Delete route
-app.delete("/deletegame/:id", async (req,res)=>{
+app.delete("/deletegame/:id", isAuthenticated, async (req,res)=>{
     try{
         await Game.findByIdAndDelete(req.params.id);
         
